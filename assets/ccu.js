@@ -38,9 +38,28 @@
 
   async function fetchVotes() {
     try {
-      const response = await fetch(votesEndpoint, {
+      const response = await fetch('/api/roblox-ccu/votes', {
         headers: { Accept: 'application/json' },
         cache: 'no-store',
+        signal: AbortSignal.timeout(12_000),
+      });
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const result = await response.json();
+        if (response.ok && (Number.isFinite(result.upVotes) || Number.isFinite(result.ratingPct))) {
+          return { upVotes: result.upVotes, downVotes: result.downVotes, ratingPct: result.ratingPct };
+        }
+      }
+    } catch (error) {
+      console.warn('Votes API route failed, trying direct:', error);
+    }
+
+    try {
+      const response = await fetch(votesEndpoint, {
+        headers: { Accept: 'application/json', 'User-Agent': 'Roblox/WinInet' },
+        cache: 'no-store',
+        mode: 'cors',
+        credentials: 'omit',
         signal: AbortSignal.timeout(12_000),
       });
       if (!response.ok) throw new Error(`Votes returned ${response.status}`);
@@ -49,17 +68,21 @@
       if (!vote) throw new Error('No votes found');
       return { upVotes: vote.upVotes, downVotes: vote.downVotes };
     } catch (error) {
-      console.warn('Votes API failed, trying proxy:', error);
-      const response = await fetch(votesFallback, {
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(12_000),
-      });
-      if (!response.ok) throw new Error(`Votes proxy returned ${response.status}`);
-      const payload = await response.json();
-      const vote = payload.data?.find((entry) => String(entry.id) === universeId);
-      if (!vote) throw new Error('No votes found');
-      return { upVotes: vote.upVotes, downVotes: vote.downVotes };
+      console.warn('Votes direct failed, trying fallback:', error);
+      try {
+        const response = await fetch(votesFallback, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          signal: AbortSignal.timeout(12_000),
+        });
+        if (!response.ok) throw new Error(`Votes fallback returned ${response.status}`);
+        const payload = await response.json();
+        const vote = payload.data?.find((entry) => String(entry.id) === universeId);
+        if (!vote) throw new Error('No votes found');
+        return { upVotes: vote.upVotes, downVotes: vote.downVotes };
+      } catch (proxyError) {
+        throw proxyError;
+      }
     }
   }
 
@@ -120,7 +143,13 @@
         lastCount = result.playing;
       }
       if (visitsEl && Number.isFinite(result.visits)) visitsEl.textContent = formatVisits(result.visits);
-      if (ratingEl && votes) ratingEl.textContent = formatRating(votes.upVotes, votes.downVotes);
+      if (ratingEl && votes) {
+        if (Number.isFinite(votes.ratingPct)) {
+          ratingEl.textContent = `${votes.ratingPct.toFixed(votes.ratingPct >= 99 ? 0 : 1)}%`;
+        } else {
+          ratingEl.textContent = formatRating(votes.upVotes, votes.downVotes);
+        }
+      }
       status.textContent = 'LIVE';
     } catch (error) {
       status.textContent = 'OFFLINE';

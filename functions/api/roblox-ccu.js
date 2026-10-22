@@ -1,10 +1,9 @@
 const UNIVERSE_ID = '6889096819';
 const ROBLOX_GAMES_API = 'https://games.roblox.com/v1/games';
-const ROBLOX_PROXY_API = 'https://games.roproxy.com/v1/games';
 
 async function fetchGames(url) {
   const response = await fetch(`${url}?universeIds=${UNIVERSE_ID}`, {
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', 'User-Agent': 'Roblox/WinInet' },
     signal: AbortSignal.timeout(10_000),
     cf: { cacheTtl: 15 },
   });
@@ -23,14 +22,7 @@ export async function onRequest({ request }) {
   }
 
   try {
-    let game;
-    try {
-      game = await fetchGames(ROBLOX_GAMES_API);
-    } catch (directError) {
-      console.warn('Direct Roblox API failed, trying proxy:', directError);
-      game = await fetchGames(ROBLOX_PROXY_API);
-    }
-
+    const game = await fetchGames(ROBLOX_GAMES_API);
     return Response.json(
       {
         universeId: UNIVERSE_ID,
@@ -41,9 +33,9 @@ export async function onRequest({ request }) {
       { headers: { 'Cache-Control': 'public, max-age=15, s-maxage=15' } },
     );
   } catch (error) {
-    console.error('Roblox CCU proxy failed:', error);
+    console.error('Roblox API proxy failed:', error);
     return Response.json(
-      { error: 'Roblox player count request failed' },
+      { error: 'Roblox request failed' },
       { status: 502, headers: { 'Cache-Control': 'no-store' } },
     );
   }
