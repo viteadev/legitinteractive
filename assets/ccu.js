@@ -12,13 +12,18 @@
   const votesFallback = `https://games.roproxy.com/v1/games/votes?universeIds=${universeId}`;
   const refreshEveryMs = 60_000;
   const numberFormat = new Intl.NumberFormat();
-  const compactFormat = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
   let lastCount = null;
 
   function formatVisits(value) {
     if (!Number.isFinite(value)) return '—';
-    if (value >= 1_000_000) return compactFormat.format(value);
-    if (value >= 1_000) return `${Math.round(value / 1_000)}K+`;
+    if (value >= 1_000_000) {
+      const val = value / 1_000_000;
+      return val >= 10 ? `${Math.round(val)}M` : `${val.toFixed(val >= 10 ? 0 : 1)}M`;
+    }
+    if (value >= 1_000) {
+      const val = value / 1_000;
+      return val >= 100 ? `${Math.round(val)}K` : `${val.toFixed(val >= 10 ? 0 : 1)}K`;
+    }
     return numberFormat.format(value);
   }
 
