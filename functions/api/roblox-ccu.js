@@ -28,6 +28,7 @@ export async function onRequest({ request }) {
         universeId: UNIVERSE_ID,
         playing: game.playing,
         visits: game.visits,
+        favoritedCount: game.favoritedCount,
         updatedAt: new Date().toISOString(),
       },
       { headers: { 'Cache-Control': 'public, max-age=15, s-maxage=15' } },
