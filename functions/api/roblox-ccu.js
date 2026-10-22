@@ -14,7 +14,7 @@ async function fetchGames(url) {
   if (!game || !Number.isInteger(game.playing) || game.playing < 0) {
     throw new Error(`No player count found for universe ${UNIVERSE_ID}`);
   }
-  return game.playing;
+  return game;
 }
 
 export async function onRequest({ request }) {
@@ -23,16 +23,21 @@ export async function onRequest({ request }) {
   }
 
   try {
-    let playing;
+    let game;
     try {
-      playing = await fetchGames(ROBLOX_GAMES_API);
+      game = await fetchGames(ROBLOX_GAMES_API);
     } catch (directError) {
       console.warn('Direct Roblox API failed, trying proxy:', directError);
-      playing = await fetchGames(ROBLOX_PROXY_API);
+      game = await fetchGames(ROBLOX_PROXY_API);
     }
 
     return Response.json(
-      { universeId: UNIVERSE_ID, playing, updatedAt: new Date().toISOString() },
+      {
+        universeId: UNIVERSE_ID,
+        playing: game.playing,
+        visits: game.visits,
+        updatedAt: new Date().toISOString(),
+      },
       { headers: { 'Cache-Control': 'public, max-age=15, s-maxage=15' } },
     );
   } catch (error) {

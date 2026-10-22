@@ -727,10 +727,28 @@
         </div>
       </div>
       <div class="game-live-wrap">
-        <div class="game-live" aria-live="polite">
-          <span class="live-indicator" aria-hidden="true"></span>
-          <strong id="gameCcu" class="ccu-value">—</strong>
-          <span>playing right now</span>
+        <div class="game-stats-card" aria-live="polite" aria-label="Game stats for Literally SPRUNKI on Roblox">
+          <div class="stats-glow" aria-hidden="true"></div>
+          <div class="stats-top">
+            <span class="stats-dot" aria-hidden="true"></span>
+            <span class="stats-label">LIVE STATS</span>
+          </div>
+          <div class="stats-main">
+            <div class="stat-block stat-live">
+              <span class="stat-value" id="gameCcu">—</span>
+              <span class="stat-sub">PLAYING NOW</span>
+            </div>
+            <div class="stat-divider" aria-hidden="true"></div>
+            <div class="stat-block">
+              <span class="stat-value stat-value-sm" id="gameVisits">—</span>
+              <span class="stat-sub">VISITS</span>
+            </div>
+            <div class="stat-divider" aria-hidden="true"></div>
+            <div class="stat-block">
+              <span class="stat-value stat-value-sm" id="gameRating">—</span>
+              <span class="stat-sub">RATING</span>
+            </div>
+          </div>
         </div>
         <span class="ccu-updated" id="ccuUpdated">Connecting to Roblox…</span>
         <a class="game-link" href="https://www.roblox.com/games/129172085363202/Literally-SPRUNKI" target="_blank" rel="noopener">Play on Roblox <span aria-hidden="true">↗</span></a>
