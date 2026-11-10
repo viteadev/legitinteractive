@@ -7,10 +7,15 @@
 
   const universeId = '6889096819';
   const apiEndpoint = '/api/roblox-ccu';
-  const fallbackEndpoint = `https://games.roproxy.com/v1/games?universeIds=${universeId}`;
+  const proxyEndpoints = [
+    `https://games.rotunnel.com/v1/games?universeIds=${universeId}`,
+    `https://games.ff-roproxy.com/v1/games?universeIds=${universeId}`,
+    `https://games.roproxy.com/v1/games?universeIds=${universeId}`,
+  ];
   const refreshEveryMs = 60_000;
   const numberFormat = new Intl.NumberFormat();
   let lastCount = null;
+  let inFlight = false;
 
   function formatCount(value) {
     if (!Number.isFinite(value)) return '—';
@@ -25,6 +30,10 @@
     return numberFormat.format(value);
   }
 
+  function isValidCount(value) {
+    return Number.isInteger(value) && value >= 0;
+  }
+
   async function fetchFromApiRoute() {
     const response = await fetch(apiEndpoint, {
       headers: { Accept: 'application/json' },
@@ -37,14 +46,14 @@
     }
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || `CCU route returned ${response.status}`);
-    if (String(result.universeId) !== universeId || !Number.isInteger(result.playing) || result.playing < 0) {
+    if (String(result.universeId) !== universeId || !isValidCount(result.playing)) {
       throw new Error('The CCU route returned an invalid Roblox response.');
     }
     return { playing: result.playing, visits: result.visits, favoritedCount: result.favoritedCount, updatedAt: result.updatedAt };
   }
 
-  async function fetchFromFallback() {
-    const response = await fetch(fallbackEndpoint, {
+  async function fetchFromProxy(endpoint) {
+    const response = await fetch(endpoint, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
       signal: AbortSignal.timeout(12_000),
@@ -52,7 +61,7 @@
     if (!response.ok) throw new Error(`Roblox proxy returned ${response.status}`);
     const payload = await response.json();
     const game = payload.data?.find((entry) => String(entry.id) === universeId);
-    if (!game || !Number.isInteger(game.playing) || game.playing < 0) {
+    if (!game || !isValidCount(game.playing)) {
       throw new Error(`No player count found for universe ${universeId}`);
     }
     return { playing: game.playing, visits: game.visits, favoritedCount: game.favoritedCount, updatedAt: new Date().toISOString() };
@@ -62,12 +71,24 @@
     try {
       return await fetchFromApiRoute();
     } catch (apiError) {
-      console.warn('CCU API route unavailable, using direct Roblox fallback:', apiError);
-      return fetchFromFallback();
+      console.warn('CCU API route unavailable, using Roblox proxy fallback:', apiError);
     }
+
+    let lastError = null;
+    for (const endpoint of proxyEndpoints) {
+      try {
+        return await fetchFromProxy(endpoint);
+      } catch (proxyError) {
+        lastError = proxyError;
+        console.warn(`Roblox proxy ${new URL(endpoint).host} failed:`, proxyError);
+      }
+    }
+    throw lastError || new Error('All Roblox endpoints failed');
   }
 
   async function refreshPlayerCount() {
+    if (inFlight) return;
+    inFlight = true;
     try {
       const result = await fetchPlayerCount();
 
@@ -87,6 +108,8 @@
     } catch (error) {
       status.textContent = 'OFFLINE';
       console.error('Roblox CCU request failed:', error);
+    } finally {
+      inFlight = false;
     }
   }
 
